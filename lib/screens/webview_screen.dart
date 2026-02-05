@@ -35,12 +35,17 @@ class _WebViewScreenState extends State<WebViewScreen> {
   void _initializeWebView() {
     _webViewController = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(Colors.white)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: _onPageStarted,
           onPageFinished: _onPageFinished,
           onWebResourceError: _onWebResourceError,
         ),
+      )
+      ..enableZoom(true)
+      ..setUserAgent(
+        'Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
       );
   }
 
@@ -56,6 +61,15 @@ class _WebViewScreenState extends State<WebViewScreen> {
       _isLoading = false;
       _currentUrl = url;
     });
+
+    // Inject JavaScript to log viewport info for debugging
+    _webViewController.runJavaScript('''
+      console.log('Viewport width: ' + window.innerWidth);
+      console.log('Viewport height: ' + window.innerHeight);
+      console.log('Device pixel ratio: ' + window.devicePixelRatio);
+      console.log('Screen width: ' + screen.width);
+      console.log('Screen height: ' + screen.height);
+    ''');
   }
 
   void _onWebResourceError(WebResourceError error) {
@@ -138,28 +152,73 @@ class _WebViewScreenState extends State<WebViewScreen> {
     _multiFingerLongPressTimer = null;
   }
 
+  Future<bool> _handleBackButton() async {
+    // Show exit confirmation dialog
+    final bool? shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Exit App'),
+          content: const Text('Do you want to exit the app?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(true);
+              },
+              child: const Text('Exit'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldExit == true) {
+      // Exit the app
+      SystemNavigator.pop();
+    }
+
+    return false; // Always return false to prevent default pop behavior
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [
-          if (_isToolbarVisible)
-            SafeArea(
-              bottom: false,
-              child: DevToolbar(
-                currentUrl: _currentUrl,
-                isLoading: _isLoading,
-                isFullscreen: _isFullscreen,
-                onUrlSubmit: _loadUrl,
-                onReload: _reload,
-                onToggleFullscreen: _toggleFullscreen,
-                onToggleToolbar: _toggleToolbar,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) async {
+        if (didPop) {
+          return;
+        }
+
+        final bool shouldPop = await _handleBackButton();
+        if (shouldPop && context.mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        body: Column(
+          children: [
+            if (_isToolbarVisible)
+              SafeArea(
+                bottom: false,
+                child: DevToolbar(
+                  currentUrl: _currentUrl,
+                  isLoading: _isLoading,
+                  isFullscreen: _isFullscreen,
+                  onUrlSubmit: _loadUrl,
+                  onReload: _reload,
+                  onToggleFullscreen: _toggleFullscreen,
+                  onToggleToolbar: _toggleToolbar,
+                ),
               ),
+            Expanded(
+              child: _buildWebViewContent(),
             ),
-          Expanded(
-            child: _buildWebViewContent(),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
