@@ -6,7 +6,7 @@ class WebViewConfig {
   static const double toolbarHeight = 56.0;
 
   /// Height of the URL input bar
-  static const double urlInputBarHeight = 48.0;
+  static const double urlInputBarHeight = 52.0;
 
   /// Padding for toolbar items
   static const double toolbarPadding = 8.0;

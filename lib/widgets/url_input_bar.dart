@@ -43,8 +43,8 @@ class _UrlInputBarState extends State<UrlInputBar> {
   }
 
   Future<void> _loadBookmarks() async {
-    final List<BookmarkItem> bookmarks =
-        await BookmarkService.instance.getBookmarks();
+    final List<BookmarkItem> bookmarks = await BookmarkService.instance
+        .getBookmarks();
     setState(() {
       _bookmarks = bookmarks;
     });
@@ -58,8 +58,9 @@ class _UrlInputBarState extends State<UrlInputBar> {
       return;
     }
 
-    final bool isBookmarked =
-        await BookmarkService.instance.isBookmarked(widget.currentUrl);
+    final bool isBookmarked = await BookmarkService.instance.isBookmarked(
+      widget.currentUrl,
+    );
     setState(() {
       _isCurrentUrlBookmarked = isBookmarked;
     });
@@ -107,8 +108,9 @@ class _UrlInputBarState extends State<UrlInputBar> {
                         trailing: IconButton(
                           icon: const Icon(Icons.delete_outline),
                           onPressed: () async {
-                            await BookmarkService.instance
-                                .removeBookmark(item.url);
+                            await BookmarkService.instance.removeBookmark(
+                              item.url,
+                            );
                             await _loadBookmarks();
                             await _checkIfBookmarked();
                             if (context.mounted) {
@@ -204,8 +206,7 @@ class _UrlInputBarState extends State<UrlInputBar> {
         url: widget.currentUrl,
       );
 
-      final bool success =
-          await BookmarkService.instance.addBookmark(bookmark);
+      final bool success = await BookmarkService.instance.addBookmark(bookmark);
 
       if (success) {
         _showSnackBar('Bookmark added');
@@ -219,10 +220,7 @@ class _UrlInputBarState extends State<UrlInputBar> {
 
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-      ),
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
     );
   }
 
@@ -243,15 +241,19 @@ class _UrlInputBarState extends State<UrlInputBar> {
               controller: _urlController,
               focusNode: _focusNode,
               scrollPadding: EdgeInsets.zero,
+              maxLines: 1,
+              expands: false,
+              scrollPhysics: const ClampingScrollPhysics(),
               decoration: InputDecoration(
                 hintText: 'Enter URL',
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12.0,
-                  vertical: 8.0,
+                  vertical: 4.0,
                 ),
                 border: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(WebViewConfig.inputBorderRadius),
+                  borderRadius: BorderRadius.circular(
+                    WebViewConfig.inputBorderRadius,
+                  ),
                 ),
                 suffixIcon: _urlController.text.isNotEmpty
                     ? IconButton(
@@ -261,6 +263,7 @@ class _UrlInputBarState extends State<UrlInputBar> {
                         },
                       )
                     : null,
+                isDense: true,
               ),
               textInputAction: TextInputAction.go,
               keyboardType: TextInputType.url,
@@ -275,8 +278,9 @@ class _UrlInputBarState extends State<UrlInputBar> {
               color: _isCurrentUrlBookmarked ? Colors.amber : null,
             ),
             onPressed: _toggleBookmark,
-            tooltip:
-                _isCurrentUrlBookmarked ? 'Remove Bookmark' : 'Add Bookmark',
+            tooltip: _isCurrentUrlBookmarked
+                ? 'Remove Bookmark'
+                : 'Add Bookmark',
           ),
           const SizedBox(width: 4.0),
           IconButton(

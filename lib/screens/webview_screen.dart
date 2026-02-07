@@ -22,10 +22,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
   bool _isToolbarVisible = true;
   String? _errorMessage;
 
-  // Multi-finger long press detection
-  int _activePointerCount = 0;
-  Timer? _multiFingerLongPressTimer;
-
   @override
   void initState() {
     super.initState();
@@ -114,17 +110,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
     setState(() {
       _isToolbarVisible = !_isToolbarVisible;
     });
-
-    // Show hint when hiding toolbar
-    if (!_isToolbarVisible) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Touch with 3 fingers for 1 second to show toolbar'),
-          duration: Duration(seconds: 3),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
   }
 
   void _showErrorSnackBar(String message) {
@@ -135,21 +120,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
         duration: const Duration(seconds: 3),
       ),
     );
-  }
-
-  void _startMultiFingerLongPressTimer() {
-    _cancelMultiFingerLongPressTimer();
-
-    _multiFingerLongPressTimer = Timer(const Duration(seconds: 1), () {
-      if (_activePointerCount >= 3) {
-        _toggleToolbar();
-      }
-    });
-  }
-
-  void _cancelMultiFingerLongPressTimer() {
-    _multiFingerLongPressTimer?.cancel();
-    _multiFingerLongPressTimer = null;
   }
 
   Future<bool> _handleBackButton() async {
@@ -199,12 +169,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
         }
       },
       child: Scaffold(
-        body: Column(
-          children: [
-            if (_isToolbarVisible)
-              SafeArea(
-                bottom: false,
-                child: DevToolbar(
+        body: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              if (_isToolbarVisible)
+                DevToolbar(
                   currentUrl: _currentUrl,
                   isLoading: _isLoading,
                   isFullscreen: _isFullscreen,
@@ -213,11 +183,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   onToggleFullscreen: _toggleFullscreen,
                   onToggleToolbar: _toggleToolbar,
                 ),
-              ),
-            Expanded(
-              child: _buildWebViewContent(),
-            ),
-          ],
+              Expanded(child: _buildWebViewContent()),
+            ],
+          ),
         ),
       ),
     );
@@ -228,43 +196,89 @@ class _WebViewScreenState extends State<WebViewScreen> {
       return _buildErrorView();
     }
 
-    return Listener(
-      onPointerDown: (PointerDownEvent event) {
-        // Track pointer count for multi-finger detection
-        setState(() {
-          _activePointerCount++;
-        });
+    return Stack(
+      children: [
+        WebViewWidget(controller: _webViewController),
+        if (_isLoading) _buildLoadingIndicator(),
+        if (!_isToolbarVisible) _buildFloatingControls(),
+      ],
+    );
+  }
 
-        // If 3 fingers detected, start timer for long press
-        if (_activePointerCount == 3) {
-          _startMultiFingerLongPressTimer();
-        }
-      },
-      onPointerUp: (PointerUpEvent event) {
-        setState(() {
-          _activePointerCount--;
-        });
-        _cancelMultiFingerLongPressTimer();
-      },
-      onPointerCancel: (PointerCancelEvent event) {
-        setState(() {
-          _activePointerCount--;
-        });
-        _cancelMultiFingerLongPressTimer();
-      },
-      child: Stack(
-        children: [
-          WebViewWidget(controller: _webViewController),
-          if (_isLoading) _buildLoadingIndicator(),
-        ],
+  // Floating controls configuration constants
+  static const double _floatingControlsTopPosition = 42.0;
+  static const double _floatingControlsRightPosition = 16.0;
+  static const double _floatingControlsHorizontalPadding = 12.0;
+  static const double _floatingControlsVerticalPadding = 8.0;
+  static const double _floatingControlsBackgroundAlpha = 0.5;
+  static const double _floatingControlsBorderRadius = 8.0;
+  static const double _floatingControlsIconSize = 18.0;
+  static const double _floatingControlsButtonSize = 18.0;
+
+  Widget _buildFloatingControls() {
+    return Positioned(
+      top: _floatingControlsTopPosition,
+      right: _floatingControlsRightPosition,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: _floatingControlsHorizontalPadding,
+          vertical: _floatingControlsVerticalPadding,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(
+            alpha: _floatingControlsBackgroundAlpha,
+          ),
+          borderRadius: BorderRadius.circular(_floatingControlsBorderRadius),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: _floatingControlsButtonSize,
+              height: _floatingControlsButtonSize,
+              child: IconButton(
+                icon: const Icon(Icons.visibility, color: Colors.white),
+                iconSize: _floatingControlsIconSize,
+                padding: EdgeInsets.zero,
+                tooltip: 'Show Toolbar',
+                onPressed: _toggleToolbar,
+              ),
+            ),
+            const SizedBox(width: 12.0),
+            SizedBox(
+              width: _floatingControlsButtonSize,
+              height: _floatingControlsButtonSize,
+              child: IconButton(
+                icon: const Icon(Icons.refresh, color: Colors.white),
+                iconSize: _floatingControlsIconSize,
+                padding: EdgeInsets.zero,
+                tooltip: 'Reload',
+                onPressed: _reload,
+              ),
+            ),
+            const SizedBox(width: 12.0),
+            SizedBox(
+              width: _floatingControlsButtonSize,
+              height: _floatingControlsButtonSize,
+              child: IconButton(
+                icon: Icon(
+                  _isFullscreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                  color: Colors.white,
+                ),
+                iconSize: _floatingControlsIconSize,
+                padding: EdgeInsets.zero,
+                tooltip: _isFullscreen ? 'Exit Fullscreen' : 'Fullscreen',
+                onPressed: _toggleFullscreen,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildLoadingIndicator() {
-    return const Center(
-      child: CircularProgressIndicator(),
-    );
+    return const Center(child: CircularProgressIndicator());
   }
 
   Widget _buildErrorView() {
@@ -274,11 +288,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64.0,
-              color: Colors.red,
-            ),
+            const Icon(Icons.error_outline, size: 64.0, color: Colors.red),
             const SizedBox(height: 16.0),
             Text(
               'Error Loading Page',
@@ -291,10 +301,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 24.0),
-            ElevatedButton(
-              onPressed: _reload,
-              child: const Text('Retry'),
-            ),
+            ElevatedButton(onPressed: _reload, child: const Text('Retry')),
           ],
         ),
       ),
@@ -303,7 +310,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   @override
   void dispose() {
-    _cancelMultiFingerLongPressTimer();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     super.dispose();
   }

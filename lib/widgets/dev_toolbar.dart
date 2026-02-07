@@ -25,6 +25,8 @@ class DevToolbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
@@ -39,6 +41,7 @@ class DevToolbar extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          SizedBox(height: statusBarHeight),
           UrlInputBar(
             currentUrl: currentUrl,
             onUrlSubmit: onUrlSubmit,
@@ -51,10 +54,10 @@ class DevToolbar extends StatelessWidget {
 
   Widget _buildActionBar(BuildContext context) {
     return Container(
-      height: WebViewConfig.toolbarHeight,
-      padding: EdgeInsets.symmetric(
-        horizontal: WebViewConfig.toolbarPadding,
-        vertical: WebViewConfig.toolbarPadding / 2,
+      height: 48.0,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8.0,
+        vertical: 2.0,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
